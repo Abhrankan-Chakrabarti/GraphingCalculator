@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graphing Calculator</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .line {
+            fill: none;
+            stroke: steelblue;
+            stroke-width: 2px;
+        }
+        .axis-label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Graphing Calculator</h1>
+    <div>
+        <label for="functionInput">Enter a function (in terms of x):</label>
+        <input type="text" id="functionInput" value="Math.sin(x)">
+        <button id="plotButton">Plot</button>
+        <span id="error" style="color: red;"></span>
+    </div>
+    <svg width="600" height="400"></svg>
+    <script>
+        const svg = d3.select('svg');
+        const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+        const width = +svg.attr('width') - margin.left - margin.right;
+        const height = +svg.attr('height') - margin.top - margin.bottom;
+        const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+        const x = d3.scaleLinear().range([0, width]);
+        const y = d3.scaleLinear().range([height, 0]);
+
+        const line = d3.line()
+            .defined(d => !isNaN(d.y)) // Filter out NaN values
+            .x(d => x(d.x))
+            .y(d => y(d.y));
+
+        const xAxis = g.append('g')
+            .attr('class', 'axis axis--x')
+            .attr('transform', `translate(0,${height / 2})`) // Move x-axis to center
+            .call(d3.axisBottom(x));
+
+        const yAxis = g.append('g')
+            .attr('class', 'axis axis--y')
+            .call(d3.axisLeft(y));
+
+        g.append('text')
+            .attr('class', 'axis-label')
+            .attr('transform', `translate(${width / 2},${height + margin.bottom})`)
+            .style('text-anchor', 'middle')
+            .text('x');
+
+        g.append('text')
+            .attr('class', 'axis-label')
+            .attr('transform', 'rotate(-90)')
+            .attr('y', 0 - margin.left)
+            .attr('x', 0 - (height / 2))
+            .attr('dy', '1em')
+            .style('text-anchor', 'middle')
+            .text('y');
+
+        const path = g.append('path')
+            .attr('class', 'line');
+
+        function plotFunction(funcStr) {
+            try {
+                const func = new Function('x', `return ${funcStr};`);
+                const data = d3.range(-10, 10.1, 0.1).map(x => ({ x, y: func(x) }));
+
+                data.forEach(d => {
+                    if (isNaN(d.y) || !isFinite(d.y)) {
+                        d.y = NaN; // Set invalid values to NaN
+                    }
+                });
+
+                x.domain(d3.extent(data, d => d.x)); // Adjust x domain based on data range
+                y.domain(d3.extent(data, d => d.y)); // Adjust y domain based on data range
+
+                xAxis.transition().call(d3.axisBottom(x));
+                yAxis.transition().call(d3.axisLeft(y));
+
+                path.datum(data)
+                    .transition()
+                    .attr('d', line);
+
+                document.getElementById('error').textContent = '';
+            } catch (e) {
+                document.getElementById('error').textContent = 'Invalid function!';
+            }
+        }
+
+        document.getElementById('plotButton').addEventListener('click', function() {
+            const funcStr = document.getElementById('functionInput').value;
+            plotFunction(funcStr);
+        });
+
+        plotFunction('Math.sin(x)'); // Initial graph
+    </script>
+</body>
+</html>
