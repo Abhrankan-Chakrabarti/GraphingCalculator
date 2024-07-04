@@ -78,9 +78,18 @@
                 const func = new Function('x', `return ${funcStr};`);
                 const data = d3.range(-10, 10.1, 0.1).map(x => ({ x, y: func(x) }));
 
-                data.forEach(d => {
-                    if (isNaN(d.y) || !isFinite(d.y)) {
+                // Handle domain restrictions and vertical asymptotes
+                data.forEach((d, i, arr) => {
+                    if (isNaN(d.y) || !isFinite(d.y) || (d.x <= 0 && funcStr.includes('Math.log'))) {
                         d.y = NaN; // Set invalid values to NaN
+                    }
+
+                    // Additional handling for tan(x) to filter out discontinuities
+                    if (funcStr.includes('Math.tan') && i > 0) {
+                        const prevY = arr[i - 1].y;
+                        if (Math.abs(d.y - prevY) > 1e1) { // Detect large jumps
+                            d.y = NaN; // Treat large jumps as undefined
+                        }
                     }
                 });
 
