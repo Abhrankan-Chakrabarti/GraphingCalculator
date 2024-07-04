@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Graphing Calculator</title>
     <script src="https://d3js.org/d3.v6.min.js"></script>
     <style>
@@ -25,96 +24,87 @@
     <h1>Graphing Calculator</h1>
     <div>
         <label for="functionInput">Enter a function (in terms of x):</label>
-        <input type="text" id="functionInput" value="Math.sin(x)">
-        <button id="plotButton">Plot</button>
+        <input type="text" id="functionInput" placeholder="Enter a function, e.g., Math.sin(x)">
+        <button onclick="plotFunction()">Plot</button>
         <span id="error" style="color: red;"></span>
     </div>
     <svg width="800" height="600"></svg>
     <script>
-        const svg = d3.select('svg');
-        const margin = { top: 20, right: 20, bottom: 30, left: 50 };
-        const width = +svg.attr('width') - margin.left - margin.right;
-        const height = +svg.attr('height') - margin.top - margin.bottom;
-        const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+        const svg = d3.select("svg")
+            .attr("width", 800)
+            .attr("height", 600)
+            .append("g")
+            .attr("transform", "translate(50,20)");
 
-        const x = d3.scaleLinear().domain([-10, 10]).range([0, width]);
-        const y = d3.scaleLinear().domain([-10, 10]).range([height, 0]);
+        const width = 800 - 50 - 20;
+        const height = 600 - 20 - 30;
 
-        const line = d3.line()
-            .defined(d => !isNaN(d.y) && isFinite(d.y)) // Filter out NaN and Infinity values
-            .x(d => x(d.x))
-            .y(d => y(d.y));
+        const xScale = d3.scaleLinear().domain([-10, 10]).range([0, width]);
+        const yScale = d3.scaleLinear().domain([-10, 10]).range([height, 0]);
 
-        const xAxis = g.append('g')
-            .attr('class', 'axis axis--x')
-            .attr('transform', `translate(0,${y(0)})`) // Move x-axis to center
-            .call(d3.axisBottom(x));
+        const xAxis = d3.axisBottom(xScale);
+        const yAxis = d3.axisLeft(yScale);
 
-        const yAxis = g.append('g')
-            .attr('class', 'axis axis--y')
-            .attr('transform', `translate(${x(0)},0)`) // Move y-axis to center
-            .call(d3.axisLeft(y));
+        svg.append("g")
+            .attr("transform", `translate(0,${yScale(0)})`)
+            .call(xAxis);
 
-        g.append('text')
-            .attr('class', 'axis-label')
-            .attr('transform', `translate(${width / 2},${height + margin.bottom})`)
-            .style('text-anchor', 'middle')
-            .text('x');
+        svg.append("g")
+            .attr("transform", `translate(${xScale(0)},0)`)
+            .call(yAxis);
 
-        g.append('text')
-            .attr('class', 'axis-label')
-            .attr('transform', 'rotate(-90)')
-            .attr('y', 0 - margin.left)
-            .attr('x', 0 - (height / 2))
-            .attr('dy', '1em')
-            .style('text-anchor', 'middle')
-            .text('y');
+        svg.append("text")
+            .attr("class", "axis-label")
+            .attr("transform", `translate(${width / 2},${height + 30})`)
+            .style("text-anchor", "middle")
+            .text("x");
 
-        const path = g.append('path')
-            .attr('class', 'line');
+        svg.append("text")
+            .attr("class", "axis-label")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 0 - 50)
+            .attr("x", 0 - (height / 2))
+            .attr("dy", "1em")
+            .style("text-anchor", "middle")
+            .text("y");
 
-        function plotFunction(funcStr) {
-            try {
-                const func = new Function('x', `return ${funcStr};`);
-                const data = d3.range(-10, 10.1, 0.1).map(x => ({ x, y: func(x) }));
+        function plotFunction() {
+            const funcStr = d3.select("#functionInput").node().value;
+            const line = d3.line()
+                .defined(d => !isNaN(d.y) && isFinite(d.y))
+                .x(d => xScale(d.x))
+                .y(d => yScale(d.y));
 
-                // Handle domain restrictions and vertical asymptotes
-                data.forEach((d, i, arr) => {
-                    if (isNaN(d.y) || !isFinite(d.y) || (d.x <= 0 && funcStr.includes('Math.log'))) {
-                        d.y = NaN; // Set invalid values to NaN
-                    }
+            const data = d3.range(-10, 10, 0.1).map(x => {
+                try {
+                    const y = eval(funcStr);
+                    return { x: x, y: y };
+                } catch (e) {
+                    return { x: x, y: NaN };
+                }
+            });
 
-                    // Additional handling for tan(x) to filter out discontinuities
-                    if (funcStr.includes('Math.tan') && i > 0) {
-                        const prevY = arr[i - 1].y;
-                        if (Math.abs(d.y - prevY) > 1e1) { // Detect large jumps
-                            d.y = NaN; // Treat large jumps as undefined
-                        }
-                    }
-                });
+            // Handle discontinuities for tan(x) and other functions with vertical asymptotes
+            data.forEach((d, i, arr) => {
+                if (i > 0 && Math.abs(d.y - arr[i - 1].y) > 10) {
+                    d.y = NaN;
+                }
+            });
 
-                x.domain([-10, 10]); // Reset x domain
-                y.domain(d3.extent(data.filter(d => !isNaN(d.y)), d => d.y)); // Adjust y domain based on data range
+            svg.selectAll(".line").remove();
 
-                xAxis.transition().call(d3.axisBottom(x));
-                yAxis.transition().call(d3.axisLeft(y));
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line")
+                .attr("d", line)
+                .attr("stroke", "blue")
+                .attr("stroke-width", 2)
+                .attr("fill", "none");
 
-                path.datum(data)
-                    .transition()
-                    .attr('d', line);
-
-                document.getElementById('error').textContent = '';
-            } catch (e) {
-                document.getElementById('error').textContent = 'Invalid function!';
-            }
+            d3.select("#error").text("");
         }
 
-        document.getElementById('plotButton').addEventListener('click', function() {
-            const funcStr = document.getElementById('functionInput').value;
-            plotFunction(funcStr);
-        });
-
-        plotFunction('Math.sin(x)'); // Initial graph
+        plotFunction();
     </script>
 </body>
 </html>
