@@ -23,7 +23,7 @@ This repository contains a web-based graphing calculator implemented using HTML,
    git clone https://github.com/Abhrankan-Chakrabarti/GraphingCalculator.git
    ```
 
-2. Open index.html in your web browser to start using the graphing calculator.
+2. Open `index.html` in your web browser to start using the graphing calculator.
 
 3. Enter a mathematical function into the input field and press Plot to visualize it on the graph. Ensure to use Math. prefix for trigonometric (Math.sin, Math.cos, Math.tan), logarithmic (Math.log, Math.log10, Math.log2), and other functions (e.g., Math.sqrt, Math.pow).
 
